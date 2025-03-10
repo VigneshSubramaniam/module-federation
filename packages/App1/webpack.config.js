@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
 
 module.exports = {
-  entry: "./src/index.js",
+  entry: "./src/index.tsx",
   devtool: "source-map",
   devServer: {
     static: {
@@ -15,6 +15,29 @@ module.exports = {
     filename: "main.js",
     path: path.resolve(__dirname, "build"),
   },
+  resolve: {
+    extensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
+  },
+  module: {
+    // exclude node_modules
+    rules: [
+      {
+        test: /\.(ts|tsx)$/,
+        exclude: /node_modules/,
+        use: "ts-loader",
+      },
+      {
+        test: /\.(js|jsx)$/, 
+        exclude: /node_modules/,
+        use: ["babel-loader"],
+      },
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"],
+      }
+    ],
+  },
+  // pass all js files through Babel
   plugins: [
     new ModuleFederationPlugin({
       name: "app1",
@@ -23,27 +46,15 @@ module.exports = {
         app2: "app2@http://localhost:4001/remoteEntry.js",
         viteapp: 'viteapp@http://localhost:5173/dist/assets/remoteEntry.js'
       },
-      exposes: {},
+      exposes: {
+        "./App": "./src/App"
+      },
       shared: require("./package.json").dependencies,
     }),
     new HtmlWebpackPlugin({
       template: path.join(__dirname, "public", "index.html"),
     }),
   ],
-  module: {
-    // exclude node_modules
-    rules: [
-      {
-        test: /\.(js|jsx)$/, 
-        exclude: /node_modules/,
-        use: ["babel-loader"],
-      },
-    ],
-  },
-  // pass all js files through Babel
-  resolve: {
-    extensions: [".*", ".js", ".jsx"],
-  }
 };
 
 // module.exports = (_, argv) => ({

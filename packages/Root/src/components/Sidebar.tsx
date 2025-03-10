@@ -34,6 +34,16 @@ const Sidebar: React.FC = () => {
       label: 'Timesheet',
       icon: TimelineAttachmentMajor,
       onClick: () => handleNavClick('TIMESHEET')
+    },
+    {
+      label: 'App 1',
+      icon: HomeMajor,
+      onClick: () => handleNavClick('APP1')
+    },
+    {
+      label: 'App 2',
+      icon: HomeMajor,
+      onClick: () => handleNavClick('APP2')
     }
   ];
 

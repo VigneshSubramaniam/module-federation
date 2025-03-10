@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
 
 module.exports = {
-  entry: "./src/index.js",
+  entry: "./src/index.tsx",
   devtool: "source-map",
   devServer: {
     static: {
@@ -15,6 +15,29 @@ module.exports = {
     filename: "main.js",
     path: path.resolve(__dirname, "build"),
   },
+  resolve: {
+    extensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
+  },
+  module: {
+    // exclude node_modules
+    rules: [
+      {
+        test: /\.(ts|tsx)$/,
+        exclude: /node_modules/,
+        use: "ts-loader",
+      },
+      {
+        test: /\.(js|jsx)$/, 
+        exclude: /node_modules/,
+        use: ["babel-loader"],
+      },
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"],
+      }
+    ],
+  },
+  // pass all js files through Babel
   plugins: [
     new HtmlWebpackPlugin({
       template: path.join(__dirname, "public", "index.html"),
@@ -30,18 +53,4 @@ module.exports = {
       shared: require("./package.json").dependencies,
     }),
   ],
-  module: {
-    // exclude node_modules
-    rules: [
-      {
-        test: /\.(js|jsx)$/, 
-        exclude: /node_modules/,
-        use: ["babel-loader"],
-      },
-    ],
-  },
-  // pass all js files through Babel
-  resolve: {
-    extensions: [".*", ".js", ".jsx"],
-  }
 };

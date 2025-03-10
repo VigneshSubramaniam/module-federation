@@ -1,9 +1,13 @@
 import { StoreApi } from 'zustand';
 import { BaseState, StoreConfig } from '../types/store';
 
+// Create a global identifier that any module can reference
+const GLOBAL_STORE_MANAGER_KEY = '__FEDERATED_STORE_MANAGER__';
+
 class StoreManager {
   private static instance: StoreManager;
-  private stores = new Map<string, {
+  // Make stores public so we can inspect it
+  public stores = new Map<string, {
     store: StoreApi<any>,
     config: StoreConfig<any>
   }>();
@@ -18,9 +22,21 @@ class StoreManager {
   }
 
   static getInstance(): StoreManager {
+    // First check if it exists in the global scope
+    if (typeof window !== 'undefined' && (window as any)[GLOBAL_STORE_MANAGER_KEY]) {
+      return (window as any)[GLOBAL_STORE_MANAGER_KEY];
+    }
+    
+    // If not, create a new instance
     if (!StoreManager.instance) {
       StoreManager.instance = new StoreManager();
+      
+      // Store it globally to ensure it's a singleton across module boundaries
+      if (typeof window !== 'undefined') {
+        (window as any)[GLOBAL_STORE_MANAGER_KEY] = StoreManager.instance;
+      }
     }
+    
     return StoreManager.instance;
   }
 

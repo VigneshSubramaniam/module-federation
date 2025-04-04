@@ -12,8 +12,8 @@ class StoreManager {
     config: StoreConfig<any>
   }>();
 
-  // Map<storeId, Map<tabId, state>>
-  private tabStateCache = new Map<string, Map<string, any>>();
+  // Map<storeId, Map<tabId, { dirtyKeys: Set<string>, state: any }>>
+  private tabStateCache = new Map<string, Map<string, { dirtyKeys: Set<string>, state: any }>>();
 
   private constructor() {
     this.loadPersistedStores();
@@ -41,20 +41,168 @@ class StoreManager {
   }
 
   getTabState<T>(storeId: string, tabId: string): T | null {
-    return this.tabStateCache.get(storeId)?.get(tabId) || null;
+    const storeCache = this.tabStateCache.get(storeId);
+    if (!storeCache) return null;
+    
+    const cachedEntry = storeCache.get(tabId);
+    if (!cachedEntry) return null;
+    
+    const { dirtyKeys, state } = cachedEntry;
+    
+    // Get initial state from store configuration
+    const storeInfo = this.stores.get(storeId);
+    if (!storeInfo) return null;
+    
+    const { config } = storeInfo;
+    const initialState = config.initialState;
+    
+    // Create a new state object by merging initial state with dirty values
+    const mergedState = { ...initialState };
+    
+    // Apply only the dirty properties from the cached state
+    dirtyKeys.forEach(key => {
+      this.setNestedProperty(mergedState, key, this.getNestedProperty(state, key));
+    });
+    
+    return mergedState as T;
   }
 
-  setTabState<T>(storeId: string, tabId: string, state: T): void {
+  setTabState<T extends object>(storeId: string, tabId: string, newState: T, previousState?: T): void {
     let storeCache = this.tabStateCache.get(storeId);
     if (!storeCache) {
       storeCache = new Map();
       this.tabStateCache.set(storeId, storeCache);
     }
-    storeCache.set(tabId, state);
+    
+    // Get initial state from store configuration
+    const storeInfo = this.stores.get(storeId);
+    if (!storeInfo) {
+      // Fallback for unknown stores
+      storeCache.set(tabId, { dirtyKeys: new Set<string>(), state: newState });
+      return;
+    }
+    
+    const { config } = storeInfo;
+    const initialState = config.initialState;
+    
+    // Get or initialize the cached entry
+    let cachedEntry = storeCache.get(tabId);
+    if (!cachedEntry) {
+      cachedEntry = { dirtyKeys: new Set<string>(), state: {} };
+    }
+    
+    // Find what has changed from initial state
+    const dirtyKeys = this.findDirtyKeys(initialState, newState, previousState || cachedEntry.state);
+    
+    // Add new dirty keys to the existing set
+    const updatedDirtyKeys = new Set([...cachedEntry.dirtyKeys, ...dirtyKeys]);
+    
+    // Create a new state object with only the dirty properties
+    const filteredState = {};
+    updatedDirtyKeys.forEach(key => {
+      this.setNestedProperty(filteredState, key, this.getNestedProperty(newState, key));
+    });
+    
+    // Store only the filtered state with dirty keys
+    storeCache.set(tabId, { 
+      dirtyKeys: updatedDirtyKeys, 
+      state: filteredState 
+    });
   }
 
   clearTabState(storeId: string, tabId: string): void {
-    this.tabStateCache.get(storeId)?.delete(tabId);
+    const storeCache = this.tabStateCache.get(storeId);
+    if (storeCache) {
+      storeCache.delete(tabId);
+    }
+  }
+
+  // Find keys that have changed from previous state or differ from initial state
+  private findDirtyKeys(initialState: any, newState: any, previousState: any, prefix = ''): Set<string> {
+    const dirtyKeys = new Set<string>();
+    
+    // Skip if any state is null or undefined
+    if (!initialState || !newState) return dirtyKeys;
+    
+    // For primitive types, directly compare with initial and previous states
+    if (typeof newState !== 'object') {
+      if (newState !== initialState) {
+        dirtyKeys.add(prefix);
+      }
+      return dirtyKeys;
+    }
+    
+    // Handle objects
+    Object.keys(newState).forEach(key => {
+      // Skip methods and internal properties
+      if (typeof newState[key] === 'function' || key.startsWith('_')) {
+        return;
+      }
+      
+      const newPath = prefix ? `${prefix}.${key}` : key;
+      const prevValue = previousState?.[key];
+      const newValue = newState[key];
+      const initialValue = initialState[key];
+      
+      // Handle arrays and dates (compare serialized forms)
+      if (Array.isArray(newValue) || newValue instanceof Date) {
+        if (JSON.stringify(newValue) !== JSON.stringify(prevValue) || 
+            JSON.stringify(newValue) !== JSON.stringify(initialValue)) {
+          dirtyKeys.add(newPath);
+        }
+      }
+      // Recursively check nested objects
+      else if (newValue && typeof newValue === 'object') {
+        const nestedDirtyKeys = this.findDirtyKeys(
+          initialValue || {}, 
+          newValue, 
+          prevValue || {}, 
+          newPath
+        );
+        nestedDirtyKeys.forEach(key => dirtyKeys.add(key));
+      }
+      // Compare primitive values
+      else if (newValue !== prevValue || newValue !== initialValue) {
+        dirtyKeys.add(newPath);
+      }
+    });
+    
+    return dirtyKeys;
+  }
+
+  // Helper to get a nested property using dot notation
+  private getNestedProperty(obj: any, path: string): any {
+    if (!path) return obj;
+    
+    const parts = path.split('.');
+    let current = obj;
+    
+    for (const part of parts) {
+      if (current === undefined || current === null) return undefined;
+      current = current[part];
+    }
+    
+    return current;
+  }
+
+  // Helper to set a nested property using dot notation
+  private setNestedProperty(obj: any, path: string, value: any): void {
+    if (!path) return;
+    
+    const parts = path.split('.');
+    let current = obj;
+    
+    // Build the path
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!(part in current)) {
+        current[part] = {};
+      }
+      current = current[part];
+    }
+    
+    // Set the value at the final path
+    current[parts[parts.length - 1]] = value;
   }
 
   // New method to clear all stores for a specific tab

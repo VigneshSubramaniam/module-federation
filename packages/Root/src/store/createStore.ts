@@ -17,22 +17,26 @@ export function createStore<T extends BaseState>(config: StoreConfig<T>) {
             return { ...get(), ...config.initialState } as T;
           }
         }
-        
       }
       return get();
-     
     };
 
     const wrappedSet = (updates: Partial<T>) => {
-      const newState = { ...get(), ...updates };
+      // Get the current state before applying updates
+      const currentState = get();
+      
+      // Create the new state by merging current state with updates
+      const newState = { ...currentState, ...updates };
       
       if (config.cache?.tabBehavior === 'persist') {
         const { activeTabId } = useTabStore.getState();
         if (activeTabId) {
-          storeManager.setTabState(config.id, activeTabId, newState);
+          // Pass both the new state and previous state to track changes
+          storeManager.setTabState(config.id, activeTabId, newState, currentState);
         }
       }
       
+      // Apply the update to Zustand state
       set(newState);
     };
 

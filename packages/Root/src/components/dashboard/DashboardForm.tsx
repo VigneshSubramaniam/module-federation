@@ -1,7 +1,13 @@
-import React from 'react';
-import { Card, FormLayout, TextField, BlockStack, Text } from '@shopify/polaris';
-import { useDashboardStore } from '../../store/dashboardStore';
-import { shallow } from 'zustand/shallow';
+import React, {useState} from "react";
+import {
+  Card,
+  FormLayout,
+  TextField,
+  BlockStack,
+  Text,
+} from "@shopify/polaris";
+import { useDashboardStore } from "../../store/dashboardStore";
+import { shallow } from "zustand/shallow";
 
 // Create separate components for each form field to leverage Zustand's selective rendering
 const TotalProjectsField = () => {
@@ -9,13 +15,15 @@ const TotalProjectsField = () => {
     (state) => [state.metrics.totalProjects, state.updateMetrics],
     shallow
   );
-  
+
   return (
     <TextField
       label="Total Projects"
       type="number"
       value={totalProjects.toString()}
-      onChange={(value) => updateMetrics({ totalProjects: parseInt(value) || 0 })}
+      onChange={(value) =>
+        updateMetrics({ totalProjects: parseInt(value) || 0 })
+      }
       autoComplete="off"
     />
   );
@@ -26,13 +34,15 @@ const ActiveProjectsField = () => {
     (state) => [state.metrics.activeProjects, state.updateMetrics],
     shallow
   );
-  
+
   return (
     <TextField
       label="Active Projects"
       type="number"
       value={activeProjects.toString()}
-      onChange={(value) => updateMetrics({ activeProjects: parseInt(value) || 0 })}
+      onChange={(value) =>
+        updateMetrics({ activeProjects: parseInt(value) || 0 })
+      }
       autoComplete="off"
     />
   );
@@ -43,13 +53,15 @@ const TeamUtilizationField = () => {
     (state) => [state.metrics.teamUtilization, state.updateMetrics],
     shallow
   );
-  
+
   return (
     <TextField
       label="Team Utilization"
       type="number"
       value={teamUtilization.toString()}
-      onChange={(value) => updateMetrics({ teamUtilization: parseInt(value) || 0 })}
+      onChange={(value) =>
+        updateMetrics({ teamUtilization: parseInt(value) || 0 })
+      }
       suffix="%"
       autoComplete="off"
     />
@@ -61,7 +73,7 @@ const TeamCountField = () => {
     (state) => [state.metrics.teamCount, state.updateMetrics],
     shallow
   );
-  
+
   return (
     <TextField
       label="Team count"
@@ -74,13 +86,19 @@ const TeamCountField = () => {
 };
 
 const DashboardForm: React.FC = () => {
+  const [showProjectMetrics, setShowProjectMetrics] = useState(true);
   return (
     <Card>
       <BlockStack gap="4">
-        <Text as="h2" variant="headingMd">Update Metrics</Text>
+        <Text as="h2" variant="headingMd">
+          Update Metrics
+        </Text>
         <FormLayout>
           <FormLayout.Group>
-            <TotalProjectsField />
+            <button onClick={() => setShowProjectMetrics(!showProjectMetrics)}>
+              Toggle Project Metrics{" "}
+            </button>
+            {showProjectMetrics && <TotalProjectsField />}
             <ActiveProjectsField />
             <TeamUtilizationField />
             <TeamCountField />
@@ -91,4 +109,4 @@ const DashboardForm: React.FC = () => {
   );
 };
 
-export default DashboardForm; 
+export default DashboardForm;

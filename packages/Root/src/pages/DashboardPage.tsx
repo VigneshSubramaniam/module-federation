@@ -7,6 +7,7 @@ import ProgressMetrics from '../components/dashboard/ProgressMetrics';
 import DashboardForm from '../components/dashboard/DashboardForm';
 import { useDashboardStore } from '../store/dashboardStore';
 import { ProjectList } from '@/components/dashboard/ProjectList';
+import {useState} from 'react';
 
 // Separate component for the page title to prevent unnecessary re-renders
 const DashboardTitle = () => {

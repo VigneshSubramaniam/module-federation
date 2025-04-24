@@ -4,6 +4,8 @@ import { BaseState, CacheStrategy, TabBehavior } from '../types/store';
 
 interface DashboardStateWithBase extends DashboardState, BaseState {
   metrics: DashboardMetrics;
+  showProjectMetrics: boolean;
+  showTeamMetrics: boolean;
 }
 
 const initialMetrics: DashboardMetrics = {
@@ -14,14 +16,16 @@ const initialMetrics: DashboardMetrics = {
   teamUtilization: 0,
   totalHours: 0,
   projectProgress: 0,
-  teamCount:0,
+  teamCount: 0,
   budgetUtilization: 0
 };
 
 const dashboardConfig = {
   id: 'dashboardStore',
   initialState: {
-    metrics: initialMetrics
+    metrics: initialMetrics,
+    showProjectMetrics: true,
+    showTeamMetrics: true
   },
   methods: (
     set: (state: Partial<DashboardStateWithBase>) => void,
@@ -31,7 +35,15 @@ const dashboardConfig = {
       const { metrics: currentMetrics } = get();
       set({ metrics: { ...currentMetrics, ...metrics } });
     },
-    resetMetrics: () => set({ metrics: initialMetrics })
+    resetMetrics: () => set({ metrics: initialMetrics }),
+    toggleProjectMetrics: () => {
+      const { showProjectMetrics } = get();
+      set({ showProjectMetrics: !showProjectMetrics });
+    },
+    toggleTeamMetrics: () => {
+      const { showTeamMetrics } = get();
+      set({ showTeamMetrics: !showTeamMetrics });
+    }
   }),
   cache: {
     expiryTime: 60,

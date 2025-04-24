@@ -7,6 +7,7 @@ import {
 } from '@shopify/polaris-icons';
 import { useTabStore } from '../store/tabStore';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 const Sidebar: React.FC = () => {
   const { addTab } = useTabStore();

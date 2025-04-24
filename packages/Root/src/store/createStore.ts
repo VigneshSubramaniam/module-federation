@@ -17,10 +17,8 @@ export function createStore<T extends BaseState>(config: StoreConfig<T>) {
             return { ...get(), ...config.initialState } as T;
           }
         }
-        
       }
       return get();
-     
     };
 
     const wrappedSet = (updates: Partial<T>) => {
@@ -43,7 +41,8 @@ export function createStore<T extends BaseState>(config: StoreConfig<T>) {
         lastAccessed: Date.now(),
         lastUpdated: Date.now(),
         tabId: null,
-        lastResetTab: null
+        lastResetTab: null,
+        storeId: config.id
       }
     } as T;
   });

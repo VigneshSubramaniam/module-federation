@@ -14,6 +14,9 @@ class StoreManager {
 
   // Map<storeId, Map<tabId, state>>
   private tabStateCache = new Map<string, Map<string, any>>();
+  
+  // NEW: Track component state
+  private componentStates = new Map<string, Map<string, Set<string>>>();
 
   private constructor() {
     this.loadPersistedStores();
@@ -202,6 +205,81 @@ class StoreManager {
         }
       }
     });
+  }
+
+  // NEW: Register component state properties
+  registerComponentState(storeId: string, componentId: string, properties: string[]): void {
+    if (!this.componentStates.has(storeId)) {
+      this.componentStates.set(storeId, new Map());
+    }
+    
+    const storeComponents = this.componentStates.get(storeId)!;
+    if (!storeComponents.has(componentId)) {
+      storeComponents.set(componentId, new Set());
+    }
+    
+    const componentProps = storeComponents.get(componentId)!;
+    properties.forEach(prop => componentProps.add(prop));
+    
+    // Add metadata to the store state
+    const storeInfo = this.stores.get(storeId);
+    if (storeInfo) {
+      const state = storeInfo.store.getState();
+      
+      // Ensure metadata exists
+      if (!state._metadata) {
+        state._metadata = {
+          lastAccessed: Date.now(),
+          lastUpdated: Date.now(),
+          tabId: null,
+          lastResetTab: null,
+        };
+      }
+      
+      // Update store state to include storeId in metadata
+      storeInfo.store.setState({
+        ...state,
+        _metadata: {
+          ...state._metadata,
+          storeId // Make sure store ID is in metadata for easy lookup
+        }
+      });
+    }
+  }
+  
+  // NEW: Clean up component state when component unmounts
+  cleanupComponentState(storeId: string, componentId: string, properties: string[]): void {
+    if (!this.componentStates.has(storeId)) return;
+    
+    const storeComponents = this.componentStates.get(storeId)!;
+    const componentProps = storeComponents.get(componentId);
+    
+    if (!componentProps) return;
+    
+    // Get the store
+    const storeInfo = this.stores.get(storeId);
+    if (!storeInfo) return;
+    
+    // Get current state and create a copy
+    const currentState = storeInfo.store.getState();
+    const newState = { ...currentState };
+    
+    // Reset each property to its initial value
+    properties.forEach(prop => {
+      // Only reset if the property exists in initial state
+      if (storeInfo.config.initialState.hasOwnProperty(prop)) {
+        newState[prop] = storeInfo.config.initialState[prop];
+      }
+    });
+    
+    // Update the state
+    storeInfo.store.setState(newState);
+    
+    // Clean up component tracking
+    storeComponents.delete(componentId);
+    if (storeComponents.size === 0) {
+      this.componentStates.delete(storeId);
+    }
   }
 }
 

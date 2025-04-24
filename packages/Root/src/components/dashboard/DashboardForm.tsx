@@ -1,13 +1,15 @@
-import React, {useState} from "react";
+import React from "react";
 import {
   Card,
   FormLayout,
   TextField,
   BlockStack,
   Text,
+  Button
 } from "@shopify/polaris";
 import { useDashboardStore } from "../../store/dashboardStore";
 import { shallow } from "zustand/shallow";
+import { useComponentState } from "../../hooks/useComponentState";
 
 // Create separate components for each form field to leverage Zustand's selective rendering
 const TotalProjectsField = () => {
@@ -86,18 +88,24 @@ const TeamCountField = () => {
 };
 
 const DashboardForm: React.FC = () => {
-  const [showProjectMetrics, setShowProjectMetrics] = useState(true);
+  // Use component-scoped state that will reset when the component unmounts
+  const [showProjectMetrics, toggleProjectMetrics] = useComponentState(
+    useDashboardStore,
+    (state) => [state.showProjectMetrics, state.toggleProjectMetrics],
+    ['showProjectMetrics']
+  );
+
   return (
     <Card>
       <BlockStack gap="4">
         <Text as="h2" variant="headingMd">
           Update Metrics
         </Text>
+        <Button onClick={toggleProjectMetrics}>
+          {showProjectMetrics ? 'Hide' : 'Show'} Project Metrics
+        </Button>
         <FormLayout>
           <FormLayout.Group>
-            <button onClick={() => setShowProjectMetrics(!showProjectMetrics)}>
-              Toggle Project Metrics{" "}
-            </button>
             {showProjectMetrics && <TotalProjectsField />}
             <ActiveProjectsField />
             <TeamUtilizationField />

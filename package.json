@@ -1,16 +1,27 @@
 {
     "name": "webpack-module-federation",
     "private": true,
+    "type": "module",
     "scripts": {
-      "build": "yarn workspaces run build",
-      "serve": "wsrun --parallel serve",
-      "start": "concurrently \"wsrun --parallel start\""
+        "build": "yarn workspaces run build",
+        "serve": "wsrun --parallel serve",
+        "start": "concurrently \"wsrun --parallel start\""
     },
     "workspaces": [
-      "packages/*"
+        "packages/*"
     ],
     "devDependencies": {
-      "concurrently": "^5.1.0",
-      "wsrun": "^5.2.0"
+        "@eslint/js": "^9.24.0",
+        "@typescript-eslint/eslint-plugin": "^8.30.1",
+        "@typescript-eslint/parser": "^8.30.1",
+        "concurrently": "^5.1.0",
+        "eslint": "^9.24.0",
+        "eslint-plugin-no-restricted-imports": "^0.0.0",
+        "eslint-plugin-react": "^7.37.5",
+        "typescript-eslint": "^8.30.1",
+        "wsrun": "^5.2.0"
+    },
+    "dependencies": {
+        "eslint-webpack-plugin": "^5.0.1"
     }
-  }
+}

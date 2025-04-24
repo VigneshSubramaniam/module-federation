@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
+const ESLintPlugin = require('eslint-webpack-plugin')
 
 module.exports = {
   entry: './src/index.tsx',
@@ -80,7 +81,12 @@ module.exports = {
     }),
     new HtmlWebpackPlugin({
       template: './src/index.html'
-    })
+    }),
+    new ESLintPlugin({
+      extensions: ['ts', 'tsx', 'js', 'jsx'],
+      failOnError: true, // ✅ this ensures the build fails on error
+      lintDirtyModulesOnly: true, // Only lint modified files
+    }),
   ],
   devServer: {
     static: {

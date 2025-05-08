@@ -73,7 +73,10 @@ const TabContainer: React.FC = () => {
           <Button
             variant="plain"
             icon={MobileCancelMajor}
-            onClick={() => closeAllTabsExceptCurrent()}
+            onClick={() => {
+              console.log("Close All button clicked");
+              closeAllTabsExceptCurrent();
+            }}
             accessibilityLabel="Close all tabs except current"
           >
             Close All

@@ -57,26 +57,45 @@ class StoreManager {
     this.tabStateCache.get(storeId)?.delete(tabId);
   }
 
-  // New method to clear all stores for a specific tab
+  // Method to clear all stores for a specific tab
   clearAllStoresForTab(tabId: string): void {
-    // Iterate through all stores and clear this tab's state
+    console.log(`Clearing stores for tab: ${tabId}`);
+    
+    // Track which stores had their tabState cleared
+    const clearedStores = new Set<string>();
+    
+    // 1. Iterate through all stores and clear this tab's state from tabStateCache
     this.tabStateCache.forEach((tabStates, storeId) => {
+      const hadTab = tabStates.has(tabId);
       tabStates.delete(tabId);
+      if (hadTab) {
+        clearedStores.add(storeId);
+        console.log(`Cleared tab ${tabId} from store ${storeId} tabStateCache`);
+      }
     });
     
-    // Also reset any store that's currently using this tab's state
-    this.stores.forEach(({ store, config }) => {
+    // 2. Reset store state for any store using this tab ID
+    this.stores.forEach(({ store, config }, storeId) => {
       const state = store.getState();
-      if (state._metadata?.tabId === tabId) {
+      
+      // If this store is currently using this tab ID or we previously cleared its cache
+      if (state._metadata?.tabId === tabId || clearedStores.has(storeId)) {
+        console.log(`Resetting store ${storeId} that was using tab ${tabId}`);
+        
+        // Reset to initial state
         store.setState({
           ...config.initialState,
           _metadata: {
-            ...state._metadata,
-            tabId: null
+            lastAccessed: Date.now(),
+            lastUpdated: Date.now(),
+            tabId: null,
+            lastResetTab: null
           }
         });
       }
     });
+    
+    console.log(`Finished clearing stores for tab: ${tabId}`);
   }
 
   registerStore<T extends BaseState>(
@@ -202,6 +221,21 @@ class StoreManager {
         }
       }
     });
+  }
+
+  // Debug method to dump the current state of tab caches
+  dumpTabStateCaches(): void {
+    console.log('=== STORE MANAGER TAB STATE CACHE DUMP ===');
+    let totalEntries = 0;
+    
+    this.tabStateCache.forEach((tabStates, storeId) => {
+      const tabIds = Array.from(tabStates.keys());
+      console.log(`Store ${storeId} has tab states for: ${tabIds.join(', ')}`);
+      totalEntries += tabIds.length;
+    });
+    
+    console.log(`Total entries across all stores: ${totalEntries}`);
+    console.log('=== END DUMP ===');
   }
 }
 

@@ -70,22 +70,46 @@ export const useTabStore = create<TabState>((set, get) => ({
   closeAllTabsExceptCurrent: () => {
     const { tabs, activeTabId } = get();
     
-    if (!activeTabId || tabs.length <= 1) return;
+    console.log(`closeAllTabsExceptCurrent called. Active tab: ${activeTabId}, Total tabs: ${tabs.length}`);
     
-    // Get all tab IDs except the active one
-    const tabsToClose = tabs
-      .filter(tab => tab.id !== activeTabId)
-      .map(tab => tab.id);
+    if (!activeTabId || tabs.length <= 1) {
+      console.log('No tabs to close or only one tab exists. Exiting.');
+      return;
+    }
     
-    // Clear all stores for these tabs
-    tabsToClose.forEach(tabId => {
+    // Dump the current state of tab caches for debugging
+    console.log('State BEFORE closing tabs:');
+    storeManager.dumpTabStateCaches();
+    
+    // Get all tabs except the active one
+    const tabsToClose = tabs.filter(tab => tab.id !== activeTabId);
+    console.log(`Tabs to close: ${tabsToClose.length}`, tabsToClose.map(t => t.id));
+    
+    // Instead of just updating the state once at the end, we'll actually call removeTab
+    // for each tab, but modify it slightly to avoid changing the activeTabId
+    const safeRemoveTab = (tabId: string) => {
+      console.log(`Safe removing tab: ${tabId}`);
+      
+      // Use the same store clearing logic as removeTab
       storeManager.clearAllStoresForTab(tabId);
+      
+      // But only update the tabs array, not the activeTabId
+      set(state => ({
+        ...state,
+        tabs: state.tabs.filter(tab => tab.id !== tabId)
+      }));
+    };
+    
+    // Close each tab one by one
+    tabsToClose.forEach(tab => {
+      safeRemoveTab(tab.id);
     });
     
-    // Update the tabs array to only include the current tab
-    set(state => ({
-      tabs: state.tabs.filter(tab => tab.id === activeTabId)
-    }));
+    // Dump the state again to verify stores were cleared
+    console.log('State AFTER closing tabs:');
+    storeManager.dumpTabStateCaches();
+    
+    console.log('closeAllTabsExceptCurrent completed');
   },
 
   // Add this method to generate unique tab instance IDs

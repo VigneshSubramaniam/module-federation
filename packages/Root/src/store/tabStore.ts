@@ -67,6 +67,27 @@ export const useTabStore = create<TabState>((set, get) => ({
     set({ activeTabId: tabId });
   },
 
+  closeAllTabsExceptCurrent: () => {
+    const { tabs, activeTabId } = get();
+    
+    if (!activeTabId || tabs.length <= 1) return;
+    
+    // Get all tab IDs except the active one
+    const tabsToClose = tabs
+      .filter(tab => tab.id !== activeTabId)
+      .map(tab => tab.id);
+    
+    // Clear all stores for these tabs
+    tabsToClose.forEach(tabId => {
+      storeManager.clearAllStoresForTab(tabId);
+    });
+    
+    // Update the tabs array to only include the current tab
+    set(state => ({
+      tabs: state.tabs.filter(tab => tab.id === activeTabId)
+    }));
+  },
+
   // Add this method to generate unique tab instance IDs
   getTabInstanceId: (tabId: string, dataId?: string) => {
     const tab = get().tabs.find(t => t.id === tabId);

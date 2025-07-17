@@ -1,9 +1,13 @@
 import { StoreApi } from 'zustand';
 import { BaseState, StoreConfig } from '../types/store';
 
+// Create a global identifier that any module can reference
+const GLOBAL_STORE_MANAGER_KEY = '__FEDERATED_STORE_MANAGER__';
+
 class StoreManager {
   private static instance: StoreManager;
-  private stores = new Map<string, {
+  // Make stores public so we can inspect it
+  public stores = new Map<string, {
     store: StoreApi<any>,
     config: StoreConfig<any>
   }>();
@@ -18,17 +22,43 @@ class StoreManager {
   }
 
   static getInstance(): StoreManager {
+    // First check if it exists in the global scope
+    if (typeof window !== 'undefined' && (window as any)[GLOBAL_STORE_MANAGER_KEY]) {
+      return (window as any)[GLOBAL_STORE_MANAGER_KEY];
+    }
+    
+    // If not, create a new instance
     if (!StoreManager.instance) {
       StoreManager.instance = new StoreManager();
+      
+      // Store it globally to ensure it's a singleton across module boundaries
+      if (typeof window !== 'undefined') {
+        (window as any)[GLOBAL_STORE_MANAGER_KEY] = StoreManager.instance;
+      }
     }
+    
     return StoreManager.instance;
   }
 
+  private isGlobalStore(storeId: string): boolean {
+    const entry = this.stores.get(storeId);
+    return entry?.config.cache.scope === 'global';
+  }
+
   getTabState<T>(storeId: string, tabId: string): T | null {
+    // Global stores don't use tab state cache
+    if (this.isGlobalStore(storeId)) {
+      return null;
+    }
     return this.tabStateCache.get(storeId)?.get(tabId) || null;
   }
 
   setTabState<T>(storeId: string, tabId: string, state: T): void {
+    // Global stores don't use tab state cache
+    if (this.isGlobalStore(storeId)) {
+      return;
+    }
+    
     let storeCache = this.tabStateCache.get(storeId);
     if (!storeCache) {
       storeCache = new Map();
@@ -38,29 +68,62 @@ class StoreManager {
   }
 
   clearTabState(storeId: string, tabId: string): void {
+    // Global stores don't use tab state cache
+    if (this.isGlobalStore(storeId)) {
+      return;
+    }
     this.tabStateCache.get(storeId)?.delete(tabId);
   }
 
-  // New method to clear all stores for a specific tab
+  // Method to clear all stores for a specific tab
   clearAllStoresForTab(tabId: string): void {
-    // Iterate through all stores and clear this tab's state
+    console.log(`Clearing stores for tab: ${tabId}`);
+    
+    // Track which stores had their tabState cleared
+    const clearedStores = new Set<string>();
+    
+    // 1. Iterate through all stores and clear this tab's state from tabStateCache
+    // Skip global stores as they don't participate in tab state caching
     this.tabStateCache.forEach((tabStates, storeId) => {
+      if (this.isGlobalStore(storeId)) {
+        return;
+      }
+      
+      const hadTab = tabStates.has(tabId);
       tabStates.delete(tabId);
+      if (hadTab) {
+        clearedStores.add(storeId);
+        console.log(`Cleared tab ${tabId} from store ${storeId} tabStateCache`);
+      }
     });
     
-    // Also reset any store that's currently using this tab's state
-    this.stores.forEach(({ store, config }) => {
+    // 2. Reset store state for any tab-scoped store using this tab ID
+    this.stores.forEach(({ store, config }, storeId) => {
+      // Skip global stores - they don't get reset per tab
+      if (config.cache.scope === 'global') {
+        return;
+      }
+      
       const state = store.getState();
-      if (state._metadata?.tabId === tabId) {
+      
+      // If this store is currently using this tab ID or we previously cleared its cache
+      if (state._metadata?.tabId === tabId || clearedStores.has(storeId)) {
+        console.log(`Resetting store ${storeId} that was using tab ${tabId}`);
+        
+        // Reset to initial state
         store.setState({
           ...config.initialState,
           _metadata: {
-            ...state._metadata,
-            tabId: null
+            lastAccessed: Date.now(),
+            lastUpdated: Date.now(),
+            tabId: null,
+            lastResetTab: null
           }
         });
       }
     });
+    
+    console.log(`Finished clearing stores for tab: ${tabId}`);
   }
 
   registerStore<T extends BaseState>(
@@ -122,6 +185,8 @@ class StoreManager {
     this.stores.forEach(({ store, config }, id) => {
       if (config.cache.expiryTime > 0) {
         const state = store.getState();
+        
+        // For global stores, we don't have _metadata, so check if lastAccessed exists
         const lastAccessed = state._metadata?.lastAccessed || Date.now();
         const expiryTime = config.cache.expiryTime * 60 * 1000;
         
@@ -140,6 +205,11 @@ class StoreManager {
 
   updateStoresTabId(newTabId: string) {
     this.stores.forEach(({ store, config }) => {
+      // Skip global stores - they don't participate in tab switching
+      if (config.cache.scope === 'global') {
+        return;
+      }
+      
       const state = store.getState();
       const currentTabId = state._metadata?.tabId;
       const lastResetTab = state._metadata?.lastResetTab;
@@ -186,6 +256,21 @@ class StoreManager {
         }
       }
     });
+  }
+
+  // Debug method to dump the current state of tab caches
+  dumpTabStateCaches(): void {
+    console.log('=== STORE MANAGER TAB STATE CACHE DUMP ===');
+    let totalEntries = 0;
+    
+    this.tabStateCache.forEach((tabStates, storeId) => {
+      const tabIds = Array.from(tabStates.keys());
+      console.log(`Store ${storeId} has tab states for: ${tabIds.join(', ')}`);
+      totalEntries += tabIds.length;
+    });
+    
+    console.log(`Total entries across all stores: ${totalEntries}`);
+    console.log('=== END DUMP ===');
   }
 }
 

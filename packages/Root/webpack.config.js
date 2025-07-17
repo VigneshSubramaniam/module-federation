@@ -7,7 +7,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'bundle.[contenthash].js',
-    publicPath: '/'
+    publicPath: 'http://localhost:4002/',
   },
   devtool: 'source-map',
   module: {
@@ -15,7 +15,16 @@ module.exports = {
       {
         test: /\.(ts|tsx)$/,
         exclude: /node_modules/,
-        use: 'babel-loader'
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: [
+              '@babel/preset-env',
+              '@babel/preset-react',
+              '@babel/preset-typescript'
+            ]
+          }
+        }
       },
       {
         test: /\.css$/,
@@ -37,7 +46,12 @@ module.exports = {
         app1: 'app1@http://localhost:4000/remoteEntry.js',
         app2: 'app2@http://localhost:4001/remoteEntry.js',
       },
-      exposes: {},
+      exposes: {
+        './storeUtils': './src/store/createStore.ts',
+        './storeTypes': './src/types/store.ts', 
+        './storeManager': './src/store/storeManager.ts',
+        './tabStore': './src/store/tabStore.ts',
+      },
       shared: {
         react: { 
           singleton: true, 
@@ -69,8 +83,11 @@ module.exports = {
     })
   ],
   devServer: {
-    historyApiFallback: true,
+    static: {
+      directory: path.join(__dirname, 'dist'),
+    },
     port: 4002,
-    hot: true
+    hot: true,
+    historyApiFallback: true,
   }
 }; 

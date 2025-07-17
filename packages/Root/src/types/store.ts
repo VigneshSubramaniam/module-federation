@@ -2,6 +2,8 @@ export type CacheStrategy = 'memory' | 'session' | 'persistent';
 
 export type TabBehavior = 'persist' | 'reset';
 
+export type StoreScope = 'tab' | 'global';
+
 export interface StoreCacheConfig {
   // How long to keep the state in memory (in minutes, 0 means forever)
   expiryTime: number;
@@ -11,6 +13,8 @@ export interface StoreCacheConfig {
   tabBehavior: TabBehavior;
   // Whether to clear on browser refresh
   clearOnRefresh: boolean;
+  // Whether the store is scoped to tabs or global (defaults to 'tab')
+  scope?: StoreScope;
 }
 
 export interface StoreMetadata {
@@ -21,7 +25,12 @@ export interface StoreMetadata {
 }
 
 export interface BaseState {
-  _metadata: StoreMetadata;
+  _metadata?: StoreMetadata;
+}
+
+// Interface for global stores that don't need metadata
+export interface GlobalState {
+  [key: string]: any;
 }
 
 // Separate state and methods in store config

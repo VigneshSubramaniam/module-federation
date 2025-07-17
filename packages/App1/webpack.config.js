@@ -14,6 +14,7 @@ module.exports = {
   output: {
     filename: "main.js",
     path: path.resolve(__dirname, "build"),
+    publicPath: "http://localhost:4000/",
   },
   resolve: {
     extensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -44,12 +45,15 @@ module.exports = {
       filename: "remoteEntry.js",
       remotes: {
         app2: "app2@http://localhost:4001/remoteEntry.js",
-        viteapp: 'viteapp@http://localhost:5173/dist/assets/remoteEntry.js'
+        root: "root@http://localhost:4002/remoteEntry.js"
       },
       exposes: {
         "./App": "./src/App"
       },
-      shared: require("./package.json").dependencies,
+      shared: {
+        ...require("./package.json").dependencies,
+        zustand: { singleton: true, eager: true }
+      },
     }),
     new HtmlWebpackPlugin({
       template: path.join(__dirname, "public", "index.html"),

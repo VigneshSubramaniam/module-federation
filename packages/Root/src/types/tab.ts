@@ -48,4 +48,5 @@ export interface TabState {
   addTab: (tabType: string, data?: Record<string, any>) => TabInstance | null;
   removeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
+  closeAllTabsExceptCurrent: () => void;
 } 

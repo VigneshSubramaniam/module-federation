@@ -40,11 +40,25 @@ class StoreManager {
     return StoreManager.instance;
   }
 
+  private isGlobalStore(storeId: string): boolean {
+    const entry = this.stores.get(storeId);
+    return entry?.config.cache.scope === 'global';
+  }
+
   getTabState<T>(storeId: string, tabId: string): T | null {
+    // Global stores don't use tab state cache
+    if (this.isGlobalStore(storeId)) {
+      return null;
+    }
     return this.tabStateCache.get(storeId)?.get(tabId) || null;
   }
 
   setTabState<T>(storeId: string, tabId: string, state: T): void {
+    // Global stores don't use tab state cache
+    if (this.isGlobalStore(storeId)) {
+      return;
+    }
+    
     let storeCache = this.tabStateCache.get(storeId);
     if (!storeCache) {
       storeCache = new Map();
@@ -54,6 +68,10 @@ class StoreManager {
   }
 
   clearTabState(storeId: string, tabId: string): void {
+    // Global stores don't use tab state cache
+    if (this.isGlobalStore(storeId)) {
+      return;
+    }
     this.tabStateCache.get(storeId)?.delete(tabId);
   }
 
@@ -65,7 +83,12 @@ class StoreManager {
     const clearedStores = new Set<string>();
     
     // 1. Iterate through all stores and clear this tab's state from tabStateCache
+    // Skip global stores as they don't participate in tab state caching
     this.tabStateCache.forEach((tabStates, storeId) => {
+      if (this.isGlobalStore(storeId)) {
+        return;
+      }
+      
       const hadTab = tabStates.has(tabId);
       tabStates.delete(tabId);
       if (hadTab) {
@@ -74,8 +97,13 @@ class StoreManager {
       }
     });
     
-    // 2. Reset store state for any store using this tab ID
+    // 2. Reset store state for any tab-scoped store using this tab ID
     this.stores.forEach(({ store, config }, storeId) => {
+      // Skip global stores - they don't get reset per tab
+      if (config.cache.scope === 'global') {
+        return;
+      }
+      
       const state = store.getState();
       
       // If this store is currently using this tab ID or we previously cleared its cache
@@ -157,6 +185,8 @@ class StoreManager {
     this.stores.forEach(({ store, config }, id) => {
       if (config.cache.expiryTime > 0) {
         const state = store.getState();
+        
+        // For global stores, we don't have _metadata, so check if lastAccessed exists
         const lastAccessed = state._metadata?.lastAccessed || Date.now();
         const expiryTime = config.cache.expiryTime * 60 * 1000;
         
@@ -175,6 +205,11 @@ class StoreManager {
 
   updateStoresTabId(newTabId: string) {
     this.stores.forEach(({ store, config }) => {
+      // Skip global stores - they don't participate in tab switching
+      if (config.cache.scope === 'global') {
+        return;
+      }
+      
       const state = store.getState();
       const currentTabId = state._metadata?.tabId;
       const lastResetTab = state._metadata?.lastResetTab;

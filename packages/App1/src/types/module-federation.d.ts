@@ -24,8 +24,18 @@ declare module 'root/storeUtils' {
 declare module 'root/storeTypes' {
   export type CacheStrategy = 'memory' | 'localStorage' | 'sessionStorage';
   export type TabBehavior = 'persist' | 'reset';
+  export type StoreScope = 'tab' | 'global';
   
   export interface BaseState {
+    _metadata?: {
+      lastAccessed: number;
+      lastUpdated: number;
+      tabId: string | null;
+      lastResetTab: string | null;
+    };
+  }
+
+  export interface GlobalState {
     [key: string]: any;
   }
   
@@ -41,6 +51,7 @@ declare module 'root/storeTypes' {
       strategy?: CacheStrategy;
       tabBehavior?: TabBehavior;
       clearOnRefresh?: boolean;
+      scope?: StoreScope;
     };
   }
 }
